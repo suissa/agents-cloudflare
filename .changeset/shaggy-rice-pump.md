@@ -1,5 +1,4 @@
 ---
-"mcp-elicitation-example": patch
 "agents": patch
 ---
 
