@@ -42,7 +42,7 @@ export class MyAgent extends CFAgent<Env, AgentState> {
     serialisedRunState: null
   };
 
-  // biome-ignore lint/suspicious/noExplicitAny: later
+  // biome-ignore lint/suspicious/noExplicitAny: OpenAI SDK type compatibility
   result: RunResult<unknown, Agent<unknown, any>> | null = null;
   agent = new Agent({
     instructions: "You are a helpful assistant",
