@@ -118,7 +118,7 @@ const callableMetadata = new Map<Function, CallableMetadata>();
  * Decorator that marks a method as callable by clients
  * @param metadata Optional metadata about the callable method
  */
-export function unstable_callable(metadata: CallableMetadata = {}) {
+export function callable(metadata: CallableMetadata = {}) {
   return function callableDecorator<This, Args extends unknown[], Return>(
     target: (this: This, ...args: Args) => Return,
     // biome-ignore lint/correctness/noUnusedFunctionParameters: later
@@ -131,6 +131,23 @@ export function unstable_callable(metadata: CallableMetadata = {}) {
     return target;
   };
 }
+
+let didWarnAboutUnstableCallable = false;
+
+/**
+ * Decorator that marks a method as callable by clients
+ * @deprecated this has been renamed to callable, and unstable_callable will be removed in the next major version
+ * @param metadata Optional metadata about the callable method
+ */
+export const unstable_callable = (metadata: CallableMetadata = {}) => {
+  if (!didWarnAboutUnstableCallable) {
+    didWarnAboutUnstableCallable = true;
+    console.warn(
+      "unstable_callable is deprecated, use callable instead. unstable_callable will be removed in the next major version."
+    );
+  }
+  callable(metadata);
+};
 
 export type QueueItem<T = string> = {
   id: string;
