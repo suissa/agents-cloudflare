@@ -331,6 +331,10 @@ export function useAgentChat<
 
   const processedToolCalls = useRef(new Set<string>());
 
+  // tools can be a different object everytime it's called,
+  // which might lead to this effect being called multiple times with different tools objects.
+  // we need to fix this, but that's a bigger refactor.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we need to fix this
   useEffect(() => {
     if (!experimental_automaticToolResolution) {
       return;

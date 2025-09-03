@@ -4,12 +4,12 @@
     "url": "https://github.com/cloudflare/agents/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.2",
-    "ai": "5.0.1",
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "ai": "5.0.30",
     "cron-schedule": "^5.0.4",
     "mimetext": "^3.0.27",
     "nanoid": "^5.1.5",
-    "partyserver": "^0.0.72",
+    "partyserver": "^0.0.73",
     "partysocket": "1.1.5",
     "zod": "^3.25.76"
   },
