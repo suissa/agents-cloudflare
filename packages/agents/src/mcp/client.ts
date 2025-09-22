@@ -1,8 +1,8 @@
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { RequestOptions } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
-  CallToolRequest,
   CallToolResultSchema,
+  CallToolRequest,
   CompatibilityCallToolResultSchema,
   GetPromptRequest,
   Prompt,
@@ -25,6 +25,7 @@ export class MCPClientManager {
   public mcpConnections: Record<string, MCPClientConnection> = {};
   private _callbackUrls: string[] = [];
   private _didWarnAboutUnstableGetAITools = false;
+
   /**
    * @param _name Name of the MCP client
    * @param _version Version of the MCP Client
@@ -272,7 +273,7 @@ export class MCPClientManager {
   /**
    * Namespaced version of callTool
    */
-  callTool(
+  async callTool(
     params: CallToolRequest["params"] & { serverId: string },
     resultSchema?:
       | typeof CallToolResultSchema
