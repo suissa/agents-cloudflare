@@ -1,3 +1,9 @@
+/**
+ * X402 MCP Integration
+ *
+ * Based on Coinbase's x402 (Apache 2.0): https://github.com/coinbase/x402
+ */
+
 import type {
   McpServer,
   RegisteredTool,
@@ -65,6 +71,7 @@ export function withX402<T extends McpServer>(
     annotations: ToolAnnotations,
     cb: ToolCallback<Args>
   ): RegisteredTool {
+    // Thanks to @ethanniser and his work at https://github.com/ethanniser/x402-mcp for inspiration
     return server.tool(
       name,
       description,
@@ -77,7 +84,7 @@ export function withX402<T extends McpServer>(
           const payload = { x402Version, error: "PRICE_COMPUTE_FAILED" };
           return {
             isError: true,
-            _meta: { "x402.error": payload },
+            _meta: { "x402/error": payload },
             content: [{ type: "text", text: JSON.stringify(payload) }]
           } as const;
         }
@@ -89,7 +96,7 @@ export function withX402<T extends McpServer>(
           payTo: cfg.recipient,
           asset: asset.address,
           maxTimeoutSeconds: 300,
-          resource: `mcp://tool/${name}`,
+          resource: `x402://${name}`,
           mimeType: "application/json" as const,
           description,
           extra: "eip712" in asset ? asset.eip712 : undefined
@@ -98,7 +105,7 @@ export function withX402<T extends McpServer>(
         // Get token either from MCP _meta or from header
         const headers = extra?.requestInfo?.headers ?? {};
         const token =
-          (extra?._meta?.["x402.payment"] as string | undefined) ??
+          (extra?._meta?.["x402/payment"] as string | undefined) ??
           headers["X-PAYMENT"];
 
         const paymentRequired = (
@@ -113,7 +120,7 @@ export function withX402<T extends McpServer>(
           };
           return {
             isError: true,
-            _meta: { "x402.error": payload },
+            _meta: { "x402/error": payload },
             content: [{ type: "text", text: JSON.stringify(payload) }]
           } as const;
         };
@@ -165,7 +172,7 @@ export function withX402<T extends McpServer>(
             const s = await settle(decoded, requirements);
             if (s.success) {
               result._meta ??= {};
-              result._meta["x402.payment-response"] = {
+              result._meta["x402/payment-response"] = {
                 success: true,
                 transaction: s.transaction,
                 network: s.network,
@@ -285,7 +292,7 @@ export function withX402Client<T extends MCPClient>(
     console.log("res", res);
 
     // If it errored and returned accepts, we need to confirm payment
-    const maybeX402Error = res._meta?.["x402.error"] as
+    const maybeX402Error = res._meta?.["x402/error"] as
       | { accepts: PaymentRequirements[] }
       | undefined;
 
@@ -342,7 +349,7 @@ export function withX402Client<T extends MCPClient>(
           ...params,
           _meta: {
             ...params._meta,
-            "x402.payment": token
+            "x402/payment": token
           }
         },
         resultSchema,
