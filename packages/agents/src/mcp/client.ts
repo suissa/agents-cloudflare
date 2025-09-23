@@ -77,17 +77,20 @@ export class MCPClientManager {
       }
     }
 
-    this.mcpConnections[id] = new MCPClientConnection(
-      new URL(url),
-      {
-        name: this._name,
-        version: this._version
-      },
-      {
-        client: options.client ?? {},
-        transport: options.transport ?? {}
-      }
-    );
+    // During OAuth reconnect, reuse existing connection to preserve state
+    if (!options.reconnect?.oauthCode || !this.mcpConnections[id]) {
+      this.mcpConnections[id] = new MCPClientConnection(
+        new URL(url),
+        {
+          name: this._name,
+          version: this._version
+        },
+        {
+          client: options.client ?? {},
+          transport: options.transport ?? {}
+        }
+      );
+    }
 
     await this.mcpConnections[id].init(options.reconnect?.oauthCode);
 
@@ -174,6 +177,27 @@ export class MCPClientManager {
     }
 
     return { serverId };
+  }
+
+  /**
+   * Register a callback URL for OAuth handling
+   * @param url The callback URL to register
+   */
+  registerCallbackUrl(url: string): void {
+    if (!this._callbackUrls.includes(url)) {
+      this._callbackUrls.push(url);
+    }
+  }
+
+  /**
+   * Unregister a callback URL
+   * @param serverId The server ID whose callback URL should be removed
+   */
+  unregisterCallbackUrl(serverId: string): void {
+    // Remove callback URLs that end with this serverId
+    this._callbackUrls = this._callbackUrls.filter(
+      (url) => !url.endsWith(`/${serverId}`)
+    );
   }
 
   /**

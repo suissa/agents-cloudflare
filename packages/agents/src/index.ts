@@ -23,8 +23,8 @@ import {
 } from "partyserver";
 import { camelCaseToKebabCase } from "./client";
 import { MCPClientManager } from "./mcp/client";
-// import type { MCPClientConnection } from "./mcp/client-connection";
 import { DurableObjectOAuthClientProvider } from "./mcp/do-oauth-client-provider";
+import type { TransportType } from "./mcp/types";
 import { genericObservability, type Observability } from "./observability";
 import { MessageType } from "./ai-types";
 
@@ -197,6 +197,8 @@ function getNextCronTime(cron: string) {
   return interval.getNextDate();
 }
 
+export type { TransportType } from "./mcp/types";
+
 /**
  * MCP Server state update message from server -> Client
  */
@@ -318,7 +320,10 @@ export class Agent<
   private _ParentClass: typeof Agent<Env, State> =
     Object.getPrototypeOf(this).constructor;
 
-  mcp: MCPClientManager = new MCPClientManager(this._ParentClass.name, "0.0.1");
+  readonly mcp: MCPClientManager = new MCPClientManager(
+    this._ParentClass.name,
+    "0.0.1"
+  );
 
   /**
    * Initial state for the Agent
@@ -648,6 +653,13 @@ export class Agent<
 
             // from DO storage, reconnect to all servers not currently in the oauth flow using our saved auth information
             if (servers && Array.isArray(servers) && servers.length > 0) {
+              // Restore callback URLs for OAuth-enabled servers
+              servers.forEach((server) => {
+                if (server.callback_url) {
+                  this.mcp.registerCallbackUrl(server.callback_url);
+                }
+              });
+
               servers.forEach((server) => {
                 this._connectToMcpServerInternal(
                   server.name,
@@ -1399,8 +1411,9 @@ export class Agent<
   /**
    * Connect to a new MCP Server
    *
+   * @param serverName Name of the MCP server
    * @param url MCP Server SSE URL
-   * @param callbackHost Base host for the agent, used for the redirect URI.
+   * @param callbackHost Base host for the agent, used for the redirect URI. If not provided, will be derived from the current request.
    * @param agentsPrefix agents routing prefix if not using `agents`
    * @param options MCP client and transport (header) options
    * @returns authUrl
@@ -1408,7 +1421,7 @@ export class Agent<
   async addMcpServer(
     serverName: string,
     url: string,
-    callbackHost: string,
+    callbackHost?: string,
     agentsPrefix = "agents",
     options?: {
       client?: ConstructorParameters<typeof Client>[1];
@@ -1417,7 +1430,22 @@ export class Agent<
       };
     }
   ): Promise<{ id: string; authUrl: string | undefined }> {
-    const callbackUrl = `${callbackHost}/${agentsPrefix}/${camelCaseToKebabCase(this._ParentClass.name)}/${this.name}/callback`;
+    // If callbackHost is not provided, derive it from the current request
+    let resolvedCallbackHost = callbackHost;
+    if (!resolvedCallbackHost) {
+      const { request } = getCurrentAgent();
+      if (!request) {
+        throw new Error(
+          "callbackHost is required when not called within a request context"
+        );
+      }
+
+      // Extract the origin from the request
+      const requestUrl = new URL(request.url);
+      resolvedCallbackHost = `${requestUrl.protocol}//${requestUrl.host}`;
+    }
+
+    const callbackUrl = `${resolvedCallbackHost}/${agentsPrefix}/${camelCaseToKebabCase(this._ParentClass.name)}/${this.name}/callback`;
 
     const result = await this._connectToMcpServerInternal(
       serverName,
@@ -1465,6 +1493,7 @@ export class Agent<
        */
       transport?: {
         headers?: HeadersInit;
+        type?: TransportType;
       };
     },
     reconnect?: {
@@ -1507,12 +1536,16 @@ export class Agent<
       };
     }
 
+    // Use the transport type specified in options, or default to "auto"
+    const transportType = options?.transport?.type || "auto";
+
     const { id, authUrl, clientId } = await this.mcp.connect(url, {
       client: options?.client,
       reconnect,
       transport: {
         ...headerTransportOpts,
-        authProvider
+        authProvider,
+        type: transportType
       }
     });
 
@@ -1525,6 +1558,7 @@ export class Agent<
 
   async removeMcpServer(id: string) {
     this.mcp.closeConnection(id);
+    this.mcp.unregisterCallbackUrl(id);
     this.sql`
       DELETE FROM cf_agents_mcp_servers WHERE id = ${id};
     `;

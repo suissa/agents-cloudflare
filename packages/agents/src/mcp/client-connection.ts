@@ -18,6 +18,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import type { AgentsOAuthProvider } from "./do-oauth-client-provider";
 import { SSEEdgeClientTransport } from "./sse-edge";
+import type { BaseTransportType, TransportType } from "./types";
 import { StreamableHTTPEdgeClientTransport } from "./streamable-http-edge";
 // Import types directly from MCP SDK
 import type {
@@ -31,10 +32,8 @@ export type MCPTransportOptions = (
   | StreamableHTTPClientTransportOptions
 ) & {
   authProvider?: AgentsOAuthProvider;
-  type?: "sse" | "streamable-http" | "auto";
+  type?: TransportType;
 };
-
-type TransportType = Exclude<MCPTransportOptions["type"], "auto">;
 
 export class MCPClientConnection {
   client: Client;
@@ -59,6 +58,8 @@ export class MCPClientConnection {
       client: ConstructorParameters<typeof Client>[1];
     } = { client: {}, transport: {} }
   ) {
+    this.url = url;
+
     const clientOptions = {
       ...options.client,
       capabilities: {
@@ -286,7 +287,7 @@ export class MCPClientConnection {
    * @param transportType - The transport type to get
    * @returns The transport for the client
    */
-  getTransport(transportType: TransportType) {
+  getTransport(transportType: BaseTransportType) {
     switch (transportType) {
       case "streamable-http":
         return new StreamableHTTPEdgeClientTransport(
@@ -303,19 +304,31 @@ export class MCPClientConnection {
     }
   }
 
-  async tryConnect(transportType: MCPTransportOptions["type"], code?: string) {
-    const transports: TransportType[] =
-      transportType === "auto" ? ["streamable-http", "sse"] : [transportType];
+  private async tryConnect(transportType: TransportType, code?: string) {
+    // When completing OAuth (with code), use the transport that initiated OAuth
+    let effectiveTransportType = transportType;
+    if (code && this.options.transport.authProvider) {
+      const savedTransport =
+        await this.options.transport.authProvider.getOAuthTransport();
+      if (savedTransport) {
+        effectiveTransportType = savedTransport as TransportType;
+      }
+    }
+
+    const transports: BaseTransportType[] =
+      effectiveTransportType === "auto"
+        ? ["streamable-http", "sse"]
+        : [effectiveTransportType];
 
     for (const currentTransportType of transports) {
       const isLastTransport =
         currentTransportType === transports[transports.length - 1];
       const hasFallback =
-        transportType === "auto" &&
+        effectiveTransportType === "auto" &&
         currentTransportType === "streamable-http" &&
         !isLastTransport;
 
-      const transport = await this.getTransport(currentTransportType);
+      const transport = this.getTransport(currentTransportType);
 
       if (code) {
         await transport.finishAuth(code);
@@ -323,9 +336,29 @@ export class MCPClientConnection {
 
       try {
         await this.client.connect(transport);
+
+        // Clear saved transport after successful OAuth completion
+        if (code && this.options.transport.authProvider) {
+          await this.options.transport.authProvider.clearOAuthTransport();
+        }
+
         break;
       } catch (e) {
         const error = e instanceof Error ? e : new Error(String(e));
+
+        // Save transport type when OAuth is needed (Unauthorized error)
+        // This must happen BEFORE we throw or continue
+        if (
+          !code &&
+          error.message.includes("Unauthorized") &&
+          this.options.transport.authProvider &&
+          currentTransportType
+        ) {
+          await this.options.transport.authProvider.saveOAuthTransport(
+            currentTransportType
+          );
+          throw e; // Re-throw after storing transport
+        }
 
         if (
           hasFallback &&
