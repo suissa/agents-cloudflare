@@ -1,7 +1,9 @@
 /**
  * X402 MCP Integration
  *
- * Based on Coinbase's x402 (Apache 2.0): https://github.com/coinbase/x402
+ * Based on:
+ * - Coinbase's x402 (Apache 2.0): https://github.com/coinbase/x402
+ * - @ethanniser and his work at https://github.com/ethanniser/x402-mcp
  */
 
 import type {
@@ -71,7 +73,6 @@ export function withX402<T extends McpServer>(
     annotations: ToolAnnotations,
     cb: ToolCallback<Args>
   ): RegisteredTool {
-    // Thanks to @ethanniser and his work at https://github.com/ethanniser/x402-mcp for inspiration
     return server.tool(
       name,
       description,
