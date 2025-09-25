@@ -1,8 +1,8 @@
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { RequestOptions } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
-  CallToolResultSchema,
   CallToolRequest,
+  CallToolResultSchema,
   CompatibilityCallToolResultSchema,
   GetPromptRequest,
   Prompt,
@@ -13,10 +13,26 @@ import type {
 } from "@modelcontextprotocol/sdk/types.js";
 import { type ToolSet, jsonSchema } from "ai";
 import { nanoid } from "nanoid";
+import { Emitter, type Event, DisposableStore } from "../core/events";
+import type { MCPObservabilityEvent } from "../observability/mcp";
 import {
   MCPClientConnection,
   type MCPTransportOptions
 } from "./client-connection";
+import { toErrorMessage } from "./errors";
+import type { TransportType } from "./types";
+
+export type MCPClientOAuthCallbackConfig = {
+  successRedirect?: string;
+  errorRedirect?: string;
+  customHandler?: (result: MCPClientOAuthResult) => Response;
+};
+
+export type MCPClientOAuthResult = {
+  serverId: string;
+  authSuccess: boolean;
+  authError?: string;
+};
 
 /**
  * Utility class that aggregates multiple MCP clients into one
@@ -25,6 +41,15 @@ export class MCPClientManager {
   public mcpConnections: Record<string, MCPClientConnection> = {};
   private _callbackUrls: string[] = [];
   private _didWarnAboutUnstableGetAITools = false;
+  private _oauthCallbackConfig?: MCPClientOAuthCallbackConfig;
+  private _connectionDisposables = new Map<string, DisposableStore>();
+
+  private readonly _onObservabilityEvent = new Emitter<MCPObservabilityEvent>();
+  public readonly onObservabilityEvent: Event<MCPObservabilityEvent> =
+    this._onObservabilityEvent.event;
+
+  private readonly _onConnected = new Emitter<string>();
+  public readonly onConnected: Event<string> = this._onConnected.event;
 
   /**
    * @param _name Name of the MCP client
@@ -64,11 +89,7 @@ export class MCPClientManager {
   }> {
     const id = options.reconnect?.id ?? nanoid(8);
 
-    if (!options.transport?.authProvider) {
-      console.warn(
-        "No authProvider provided in the transport options. This client will only support unauthenticated remote MCP Servers"
-      );
-    } else {
+    if (options.transport?.authProvider) {
       options.transport.authProvider.serverId = id;
       // reconnect with auth
       if (options.reconnect?.oauthClientId) {
@@ -79,6 +100,11 @@ export class MCPClientManager {
 
     // During OAuth reconnect, reuse existing connection to preserve state
     if (!options.reconnect?.oauthCode || !this.mcpConnections[id]) {
+      const normalizedTransport = {
+        ...options.transport,
+        type: options.transport?.type ?? ("auto" as TransportType)
+      };
+
       this.mcpConnections[id] = new MCPClientConnection(
         new URL(url),
         {
@@ -87,15 +113,59 @@ export class MCPClientManager {
         },
         {
           client: options.client ?? {},
-          transport: options.transport ?? {}
+          transport: normalizedTransport
         }
+      );
+
+      // Pipe connection-level observability events to the manager-level emitter
+      // and track the subscription for cleanup.
+      const store = new DisposableStore();
+      // If we somehow already had disposables for this id, clear them first
+      const existing = this._connectionDisposables.get(id);
+      if (existing) existing.dispose();
+      this._connectionDisposables.set(id, store);
+      store.add(
+        this.mcpConnections[id].onObservabilityEvent((event) => {
+          this._onObservabilityEvent.fire(event);
+        })
       );
     }
 
-    await this.mcpConnections[id].init(options.reconnect?.oauthCode);
+    // Initialize connection first
+    await this.mcpConnections[id].init();
 
+    // Handle OAuth completion if we have a reconnect code
+    if (options.reconnect?.oauthCode) {
+      try {
+        await this.mcpConnections[id].completeAuthorization(
+          options.reconnect.oauthCode
+        );
+        await this.mcpConnections[id].establishConnection();
+      } catch (error) {
+        this._onObservabilityEvent.fire({
+          type: "mcp:client:connect",
+          displayMessage: `Failed to complete OAuth reconnection for ${id} for ${url}`,
+          payload: {
+            url: url,
+            transport: options.transport?.type ?? "auto",
+            state: this.mcpConnections[id].connectionState,
+            error: toErrorMessage(error)
+          },
+          timestamp: Date.now(),
+          id
+        });
+        // Re-throw to signal failure to the caller
+        throw error;
+      }
+    }
+
+    // If connection is in authenticating state, return auth URL for OAuth flow
     const authUrl = options.transport?.authProvider?.authUrl;
-    if (authUrl && options.transport?.authProvider?.redirectUrl) {
+    if (
+      this.mcpConnections[id].connectionState === "authenticating" &&
+      authUrl &&
+      options.transport?.authProvider?.redirectUrl
+    ) {
       this._callbackUrls.push(
         options.transport.authProvider.redirectUrl.toString()
       );
@@ -158,25 +228,64 @@ export class MCPClientManager {
       );
     }
 
+    // Set the OAuth credentials
     conn.options.transport.authProvider.clientId = clientId;
     conn.options.transport.authProvider.serverId = serverId;
 
-    // reconnect to server with authorization
-    const serverUrl = conn.url.toString();
-    await this.connect(serverUrl, {
-      reconnect: {
-        id: serverId,
-        oauthClientId: clientId,
-        oauthCode: code
-      },
-      ...conn.options
-    });
+    try {
+      await conn.completeAuthorization(code);
+      return {
+        serverId,
+        authSuccess: true
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
 
-    if (this.mcpConnections[serverId].connectionState === "authenticating") {
-      throw new Error("Failed to authenticate: client failed to initialize");
+      return {
+        serverId,
+        authSuccess: false,
+        authError: errorMessage
+      };
+    }
+  }
+
+  /**
+   * Establish connection in the background after OAuth completion
+   * This method is called asynchronously and doesn't block the OAuth callback response
+   * @param serverId The server ID to establish connection for
+   */
+  async establishConnection(serverId: string): Promise<void> {
+    const conn = this.mcpConnections[serverId];
+    if (!conn) {
+      this._onObservabilityEvent.fire({
+        type: "mcp:client:preconnect",
+        displayMessage: `Connection not found for serverId: ${serverId}`,
+        payload: { serverId },
+        timestamp: Date.now(),
+        id: nanoid()
+      });
+      return;
     }
 
-    return { serverId };
+    try {
+      await conn.establishConnection();
+      this._onConnected.fire(serverId);
+    } catch (error) {
+      const url = conn.url.toString();
+      this._onObservabilityEvent.fire({
+        type: "mcp:client:connect",
+        displayMessage: `Failed to establish connection to server ${serverId} with url ${url}`,
+        payload: {
+          url,
+          transport: conn.options.transport.type ?? "auto",
+          state: conn.connectionState,
+          error: toErrorMessage(error)
+        },
+        timestamp: Date.now(),
+        id: nanoid()
+      });
+    }
   }
 
   /**
@@ -198,6 +307,22 @@ export class MCPClientManager {
     this._callbackUrls = this._callbackUrls.filter(
       (url) => !url.endsWith(`/${serverId}`)
     );
+  }
+
+  /**
+   * Configure OAuth callback handling
+   * @param config OAuth callback configuration
+   */
+  configureOAuthCallback(config: MCPClientOAuthCallbackConfig): void {
+    this._oauthCallbackConfig = config;
+  }
+
+  /**
+   * Get the current OAuth callback configuration
+   * @returns The current OAuth callback configuration
+   */
+  getOAuthCallbackConfig(): MCPClientOAuthCallbackConfig | undefined {
+    return this._oauthCallbackConfig;
   }
 
   /**
@@ -257,11 +382,19 @@ export class MCPClientManager {
    * Closes all connections to MCP servers
    */
   async closeAllConnections() {
-    return Promise.all(
-      Object.values(this.mcpConnections).map(async (connection) => {
-        await connection.client.close();
+    const ids = Object.keys(this.mcpConnections);
+    await Promise.all(
+      ids.map(async (id) => {
+        await this.mcpConnections[id].client.close();
       })
     );
+    // Dispose all per-connection subscriptions
+    for (const id of ids) {
+      const store = this._connectionDisposables.get(id);
+      if (store) store.dispose();
+      this._connectionDisposables.delete(id);
+      delete this.mcpConnections[id];
+    }
   }
 
   /**
@@ -274,6 +407,23 @@ export class MCPClientManager {
     }
     await this.mcpConnections[id].client.close();
     delete this.mcpConnections[id];
+
+    const store = this._connectionDisposables.get(id);
+    if (store) store.dispose();
+    this._connectionDisposables.delete(id);
+  }
+
+  /**
+   * Dispose the manager and all resources.
+   */
+  async dispose(): Promise<void> {
+    try {
+      await this.closeAllConnections();
+    } finally {
+      // Dispose manager-level emitters
+      this._onConnected.dispose();
+      this._onObservabilityEvent.dispose();
+    }
   }
 
   /**
