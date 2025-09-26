@@ -20,7 +20,8 @@
     "test": "npm run test -w agents",
     "test:react": "npm run test:react -w agents",
     "postinstall": "patch-package",
-    "prepare": "husky"
+    "prepare": "husky",
+    "preinstall": "node preinstall.js"
   },
   "license": "MIT",
   "version": "0.0.0",
