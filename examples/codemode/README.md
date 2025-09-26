@@ -4,6 +4,8 @@ This is a demo of the Codemode application.
 
 ## Running the demo
 
-0. Make a .env with with your OpenAI API key (See .env.example)
-1. Run `npm install` to install the dependencies.
-2. Run `npm start` to start the development server.
+1. Install dependencies in the root (`npm install`)
+2. Navigate to `examples/codemode/` (that's here)
+3. Create a `.env` file with your OpenAI API key (see `.env.example`)
+4. Run `npm start` to start the development server
+5. Visit `http://localhost:5173` to see the demo

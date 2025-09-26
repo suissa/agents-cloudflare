@@ -30,13 +30,13 @@ You can find a working demo of codemode in the `examples/codemode/` directory. T
 
 <img width="1481" height="810" alt="image" src="https://github.com/user-attachments/assets/36656642-1b0f-46d9-868b-f13c6e127b5e" />
 
-
 To run the demo:
 
-1. Navigate to `examples/codemode/`
-2. Create a `.env` file with your OpenAI API key (see `.env.example`)
-3. Run `npm install` to install dependencies
+1. Install dependencies in the root (`npm install`)
+2. Navigate to `examples/codemode/`
+3. Create a `.env` file with your OpenAI API key (see `.env.example`)
 4. Run `npm start` to start the development server
+5. Visit `http://localhost:5173` to see the demo
 
 ## Usage
 
