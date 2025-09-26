@@ -2,6 +2,8 @@
 
 This is a demo of the Codemode application.
 
+<img width="1481" height="810" alt="image" src="https://github.com/user-attachments/assets/36656642-1b0f-46d9-868b-f13c6e127b5e" />
+
 ## Running the demo
 
 1. Install dependencies in the root (`npm install`)
