@@ -346,6 +346,344 @@ body {
   cursor: not-allowed;
 }
 
+/* Message Part Blocks */
+.part-block {
+  margin: 0.5rem 0;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.part-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.part-icon {
+  font-size: 1rem;
+}
+
+.part-title {
+  flex: 1;
+  color: #374151;
+}
+
+.part-content {
+  padding: 1rem;
+  background: white;
+}
+
+/* Reasoning Block */
+.reasoning-block {
+  border-left: 4px solid #8b5cf6;
+}
+
+.reasoning-block .part-header {
+  background: #f3f0ff;
+  color: #6b21a8;
+}
+
+/* File Block */
+.file-block {
+  border-left: 4px solid #06b6d4;
+}
+
+.file-block .part-header {
+  background: #ecfeff;
+  color: #0e7490;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.file-type {
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.file-link {
+  color: #3b82f6;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.file-link:hover {
+  text-decoration: underline;
+}
+
+/* Tool Block */
+.tool-block {
+  border-left: 4px solid #f59e0b;
+}
+
+.tool-block .part-header {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.tool-state {
+  background: #fbbf24;
+  color: #92400e;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.tool-state.input-streaming {
+  background: #fbbf24;
+  color: #92400e;
+}
+
+.tool-state.input-available {
+  background: #10b981;
+  color: #064e3b;
+}
+
+.tool-state.output-available {
+  background: #10b981;
+  color: #064e3b;
+}
+
+.tool-state.output-error {
+  background: #ef4444;
+  color: #7f1d1d;
+}
+
+.tool-section {
+  margin: 0.75rem 0;
+}
+
+.tool-section:first-child {
+  margin-top: 0;
+}
+
+.tool-section:last-child {
+  margin-bottom: 0;
+}
+
+.tool-section-title {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.tool-section.error .tool-section-title {
+  color: #dc2626;
+}
+
+.tool-data {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  color: #374151;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tool-data-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Code Output Styling */
+.code-output {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: #334155;
+  border-bottom: 1px solid #475569;
+}
+
+.code-language {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.copy-button {
+  background: #475569;
+  border: 1px solid #64748b;
+  color: #e2e8f0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-button:hover {
+  background: #64748b;
+  border-color: #94a3b8;
+}
+
+.code-content {
+  margin: 0;
+  padding: 1rem;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.code-content code {
+  background: none;
+  padding: 0;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Syntax highlighting for JavaScript */
+.code-content code {
+  color: #e2e8f0;
+}
+
+/* Result Output Styling */
+.result-output {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.result-header {
+  padding: 0.5rem 0.75rem;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.result-data {
+  margin: 0;
+  padding: 0.75rem;
+  background: #f8fafc;
+  color: #374151;
+  font-size: 0.75rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Error data styling */
+.tool-data.error-data {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+/* Input Description Styling */
+.input-description {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f8fafc;
+  margin-bottom: 0.75rem;
+}
+
+.input-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.input-icon {
+  font-size: 1rem;
+}
+
+.input-title {
+  color: #374151;
+  font-weight: 600;
+}
+
+.input-content {
+  padding: 1rem;
+  background: white;
+  color: #374151;
+  line-height: 1.6;
+  font-size: 0.875rem;
+}
+
+.input-raw {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.input-raw-header {
+  padding: 0.5rem 0.75rem;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+/* Unknown Block */
+.unknown-block {
+  border-left: 4px solid #6b7280;
+}
+
+.unknown-block .part-header {
+  background: #f9fafb;
+  color: #374151;
+}
+
+.part-data {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  color: #374151;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .main-content {
@@ -365,5 +703,17 @@ body {
 
   .server-actions {
     align-self: flex-end;
+  }
+
+  .part-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .file-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 }
