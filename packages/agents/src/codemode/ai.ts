@@ -54,7 +54,6 @@ export async function experimental_codemode(options: {
   
   `;
 
-  console.log("prompt", prompt);
   const codemodeTool = tool({
     description: "codemode: a tool that can generate code to achieve a goal",
     inputSchema: z.object({
@@ -66,8 +65,6 @@ export async function experimental_codemode(options: {
     }),
     execute: async ({ functionDescription }) => {
       try {
-        console.log("codemode", functionDescription);
-
         const response = await generateObject({
           model: openai("gpt-4.1"),
           schema: z.object({
@@ -85,7 +82,6 @@ export async function experimental_codemode(options: {
 
       Here is user input: ${functionDescription}` // insert ts types for the tools here
         });
-        console.log("code", response.object.code);
 
         // console.log("args", response.object.args);
         const evaluator = createEvaluator(response.object.code, {

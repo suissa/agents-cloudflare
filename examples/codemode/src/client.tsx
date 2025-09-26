@@ -64,6 +64,7 @@ function MessagePart({ part }: { part: UIMessage["parts"][0] }) {
 
   if (part.type.startsWith("tool-")) {
     const toolName = part.type.replace("tool-", "");
+    // biome-ignore lint/suspicious/noExplicitAny: it's fine, fix later
     const toolPart = part as any; // Type assertion for tool parts
     return (
       <div className="part-block tool-block">

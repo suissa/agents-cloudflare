@@ -159,7 +159,7 @@ If the user asks to schedule a task, use the schedule tool to schedule the task.
       loader: env.LOADER,
       proxy: this.ctx.exports.CodeModeProxy({
         props: {
-          binding: "Chat",
+          binding: "Codemode",
           name: this.name,
           callback: "callTool"
         }
