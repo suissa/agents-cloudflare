@@ -5,7 +5,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.2",
-    "ai": "5.0.53",
+    "ai": "5.0.54",
     "cron-schedule": "^5.0.4",
     "json-schema-to-typescript": "^15.0.4",
     "mimetext": "^3.0.27",

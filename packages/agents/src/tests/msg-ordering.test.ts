@@ -36,7 +36,7 @@ describe("WebSocket ordering / races", () => {
       resolvePromise = res;
     });
     // Timeout if we don't get a message in the first 100ms
-    const t = setTimeout(() => resolvePromise(false), 100);
+    const _t = setTimeout(() => resolvePromise(false), 100);
 
     // Add listener before we send anything
     ws.addEventListener("message", (e: MessageEvent) => {
