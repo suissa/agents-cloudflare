@@ -2,9 +2,174 @@ import { createRoot } from "react-dom/client";
 import { useAgent } from "agents/react";
 import "./styles.css";
 import { generateId, type UIMessage } from "ai";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Codemode } from "./server";
 import type { MCPServersState } from "agents";
+
+// Component to render different types of message parts
+function MessagePart({ part }: { part: UIMessage["parts"][0] }) {
+  if (part.type === "text") {
+    return <span>{part.text}</span>;
+  }
+
+  // Don't show step-start blocks
+  if (part.type === "step-start") {
+    return null;
+  }
+
+  if (part.type === "reasoning") {
+    // Only show reasoning blocks if they have content
+    if (!part.text || part.text.trim() === "") {
+      return null;
+    }
+
+    return (
+      <div className="part-block reasoning-block">
+        <div className="part-header">
+          <span className="part-icon">🧠</span>
+          <span className="part-title">Reasoning</span>
+        </div>
+        <div className="part-content">{part.text}</div>
+      </div>
+    );
+  }
+
+  if (part.type === "file") {
+    return (
+      <div className="part-block file-block">
+        <div className="part-header">
+          <span className="part-icon">📄</span>
+          <span className="part-title">
+            File: {part.filename || "Untitled"}
+          </span>
+        </div>
+        <div className="part-content">
+          <div className="file-info">
+            <span className="file-type">{part.mediaType}</span>
+            {part.url && (
+              <a
+                href={part.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="file-link"
+              >
+                View File
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (part.type.startsWith("tool-")) {
+    const toolName = part.type.replace("tool-", "");
+    const toolPart = part as any; // Type assertion for tool parts
+    return (
+      <div className="part-block tool-block">
+        <div className="part-header">
+          <span className="part-icon">🔧</span>
+          <span className="part-title">Tool: {toolName}</span>
+          {toolPart.state && (
+            <span className={`tool-state ${toolPart.state}`}>
+              {toolPart.state}
+            </span>
+          )}
+        </div>
+        <div className="part-content">
+          {toolPart.input && (
+            <div className="tool-section">
+              <div className="tool-section-title">Input:</div>
+              <div className="tool-data-container">
+                {toolPart.input.functionDescription ? (
+                  <div className="input-description">
+                    <div className="input-header">
+                      <span className="input-icon">📝</span>
+                      <span className="input-title">Function Description</span>
+                    </div>
+                    <div className="input-content">
+                      {toolPart.input.functionDescription}
+                    </div>
+                  </div>
+                ) : null}
+                {Object.keys(toolPart.input).length > 1 ||
+                !toolPart.input.functionDescription ? (
+                  <div className="input-raw">
+                    <div className="input-raw-header">Raw Input:</div>
+                    <pre className="tool-data">
+                      {JSON.stringify(toolPart.input, null, 2)}
+                    </pre>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
+          {toolPart.output && (
+            <div className="tool-section">
+              <div className="tool-section-title">Output:</div>
+              <div className="tool-data-container">
+                {toolPart.output.code ? (
+                  <div className="code-output">
+                    <div className="code-header">
+                      <span className="code-language">JavaScript</span>
+                      <button
+                        type="button"
+                        className="copy-button"
+                        onClick={() =>
+                          navigator.clipboard.writeText(toolPart.output.code)
+                        }
+                        title="Copy code"
+                      >
+                        📋
+                      </button>
+                    </div>
+                    <pre className="code-content">
+                      <code>{toolPart.output.code}</code>
+                    </pre>
+                  </div>
+                ) : null}
+                {toolPart.output.result && (
+                  <div className="result-output">
+                    <div className="result-header">Result:</div>
+                    <pre className="result-data">
+                      {JSON.stringify(toolPart.output.result, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {!toolPart.output.code && !toolPart.output.result && (
+                  <pre className="tool-data">
+                    {JSON.stringify(toolPart.output, null, 2)}
+                  </pre>
+                )}
+              </div>
+            </div>
+          )}
+          {toolPart.errorText && (
+            <div className="tool-section error">
+              <div className="tool-section-title">Error:</div>
+              <div className="tool-data-container">
+                <pre className="tool-data error-data">{toolPart.errorText}</pre>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback for unknown part types
+  return (
+    <div className="part-block unknown-block">
+      <div className="part-header">
+        <span className="part-icon">❓</span>
+        <span className="part-title">{part.type}</span>
+      </div>
+      <div className="part-content">
+        <pre className="part-data">{JSON.stringify(part, null, 2)}</pre>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [messages, setMessages] = useState<UIMessage[]>([]);
@@ -13,6 +178,7 @@ function App() {
   const [newServerName, setNewServerName] = useState("");
   const [newServerUrl, setNewServerUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const agent = useAgent<Codemode, { messages: UIMessage[]; loading: boolean }>(
     {
       agent: "codemode",
@@ -77,6 +243,11 @@ function App() {
     agent.setState({ messages: [], loading: false });
   };
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
   // const getStatusColor = (status: MCPServer["status"]) => {
   //   switch (status) {
   //     case "connected":
@@ -124,7 +295,7 @@ function App() {
                 onClick={addMCPServer}
                 disabled={!newServerName.trim() || !newServerUrl.trim()}
               >
-                Add Server
+                Add
               </button>
             </div>
           </div>
@@ -196,9 +367,7 @@ function App() {
                   <div className="message-content">
                     {message.parts.map((part, index) => (
                       <div key={`${message.id}-part-${index}`}>
-                        {part.type === "text"
-                          ? part.text
-                          : JSON.stringify(part)}
+                        <MessagePart part={part} />
                       </div>
                     ))}
                   </div>
@@ -211,6 +380,7 @@ function App() {
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             <div className="chat-input">
