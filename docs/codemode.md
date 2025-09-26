@@ -28,6 +28,9 @@ You can find a working demo of codemode in the `examples/codemode/` directory. T
 - Interactive examples of tool composition
 - Real-time code generation and execution
 
+<img width="1481" height="810" alt="image" src="https://github.com/user-attachments/assets/36656642-1b0f-46d9-868b-f13c6e127b5e" />
+
+
 To run the demo:
 
 1. Navigate to `examples/codemode/`
