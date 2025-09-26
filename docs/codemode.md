@@ -4,14 +4,25 @@ Codemode is an experimental pattern of using LLMs to generate executable code th
 
 > **⚠️ Experimental Feature**: Codemode is currently experimental and may have breaking changes in future releases. Use with caution in production environments.
 
-Rather than being limited to predefined tool schemas, agents can:
+## Why Codemode with MCP Servers?
 
-- Generate dynamic code that combines multiple tools
-- Perform complex logic and control flow
-- Self-debug and revise their approach
-- Compose tools in novel ways not anticipated by developers
+Codemode is particularly powerful when working with **MCP (Model Context Protocol) servers**. MCP servers provide rich, stateful interfaces to external systems, but traditional tool calling can be limiting when you need to:
 
-Our implementation brings this concept to AI SDK applications with a simple abstraction.
+- **Chain multiple MCP operations** in complex workflows
+- **Handle stateful interactions** that require multiple round-trips
+- **Implement error handling and retry logic** across MCP calls
+- **Compose different MCP servers** in novel ways
+- **Perform conditional logic** based on MCP server responses
+
+Rather than being limited to predefined tool schemas, codemode enables agents to:
+
+- Generate dynamic code that combines multiple MCP server calls
+- Perform complex logic and control flow across MCP operations
+- Self-debug and revise their approach when MCP calls fail
+- Compose MCP servers in novel ways not anticipated by developers
+- Handle stateful MCP interactions that require multiple steps
+
+Our implementation brings this concept to AI SDK applications with a simple abstraction, making it especially valuable for MCP server integration.
 
 ## How It Works
 
@@ -157,46 +168,57 @@ export const globalOutbound = {
 export { CodeModeProxy } from "agents/codemode/ai";
 ```
 
-## Benefits
+## Benefits for MCP Server Integration
 
-- **Flexibility**: Agents can compose tools in ways you didn't anticipate
-- **Complex Logic**: Support for loops, conditionals, and multi-step workflows
-- **Self-Debugging**: Agents can catch errors and retry with different approaches
-- **Tool Composition**: Combine multiple tools in novel ways
-- **Dynamic Behavior**: Generate different code paths based on runtime conditions
+- **MCP Server Orchestration**: Seamlessly chain operations across multiple MCP servers
+- **Stateful Workflows**: Handle complex stateful interactions that require multiple MCP round-trips
+- **Error Recovery**: Implement sophisticated retry logic and error handling for MCP server failures
+- **Dynamic Composition**: Combine different MCP servers in ways not anticipated by their individual designs
+- **Conditional Logic**: Generate different code paths based on MCP server responses and system state
+- **Cross-Server Data Flow**: Transform and pass data between different MCP servers in complex pipelines
 
-## Example: Complex Workflow
+## Example: MCP Server Workflow
 
-Instead of being limited to single tool calls, codemode enables complex workflows:
+Instead of being limited to single MCP server calls, codemode enables complex workflows across multiple MCP servers:
 
 ```javascript
 // Generated code might look like:
 async function executeTask() {
-  // Get user's location
-  const location = await codemode.getUserLocation();
+  // Connect to file system MCP server
+  const files = await codemode.listFiles({ path: "/projects" });
 
-  // Get weather for that location
-  const weather = await codemode.getWeather({ location });
+  // Find the most recent project
+  const recentProject = files
+    .filter((f) => f.type === "directory")
+    .sort((a, b) => new Date(b.modified) - new Date(a.modified))[0];
 
-  // If it's raining, send umbrella reminder
-  if (weather.condition === "rainy") {
+  // Connect to database MCP server to check project status
+  const projectStatus = await codemode.queryDatabase({
+    query: "SELECT * FROM projects WHERE name = ?",
+    params: [recentProject.name]
+  });
+
+  // If project needs attention, create a task in task management MCP server
+  if (projectStatus.length === 0 || projectStatus[0].status === "incomplete") {
+    await codemode.createTask({
+      title: `Review project: ${recentProject.name}`,
+      description: `Project at ${recentProject.path} needs attention`,
+      priority: "high"
+    });
+
+    // Send notification via email MCP server
     await codemode.sendEmail({
-      to: "user@example.com",
-      subject: "Umbrella Reminder",
-      body: `It's raining in ${location}! Don't forget your umbrella.`
+      to: "team@company.com",
+      subject: "Project Review Needed",
+      body: `Project ${recentProject.name} requires review and status update.`
     });
   }
 
-  // Schedule a follow-up check
-  await codemode.scheduleTask({
-    task: "check_weather_again",
-    delay: "1 hour"
-  });
-
   return {
     success: true,
-    weather,
-    reminderSent: weather.condition === "rainy"
+    project: recentProject,
+    taskCreated:
+      projectStatus.length === 0 || projectStatus[0].status === "incomplete"
   };
 }
 ```
