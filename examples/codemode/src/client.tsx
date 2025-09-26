@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 import { useAgent } from "agents/react";
 import "./styles.css";
 import { generateId, type UIMessage } from "ai";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Codemode } from "./server";
 import type { MCPServersState } from "agents";
 
@@ -178,6 +178,7 @@ function App() {
   const [newServerName, setNewServerName] = useState("");
   const [newServerUrl, setNewServerUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const agent = useAgent<Codemode, { messages: UIMessage[]; loading: boolean }>(
     {
       agent: "codemode",
@@ -242,6 +243,11 @@ function App() {
     agent.setState({ messages: [], loading: false });
   };
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
   // const getStatusColor = (status: MCPServer["status"]) => {
   //   switch (status) {
   //     case "connected":
@@ -289,7 +295,7 @@ function App() {
                 onClick={addMCPServer}
                 disabled={!newServerName.trim() || !newServerUrl.trim()}
               >
-                Add Server
+                Add
               </button>
             </div>
           </div>
@@ -374,6 +380,7 @@ function App() {
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             <div className="chat-input">
