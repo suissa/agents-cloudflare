@@ -339,7 +339,7 @@ export class MCPClientManager {
     return Object.fromEntries(
       getNamespacedData(this.mcpConnections, "tools").map((tool) => {
         return [
-          `tool_${tool.serverId}_${tool.name}`,
+          `tool_${tool.serverId.replace(/-/g, "")}_${tool.name}`,
           {
             description: tool.description,
             execute: async (args) => {

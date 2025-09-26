@@ -77,18 +77,6 @@ export class Codemode extends Agent<Env, State> {
   async onStart() {
     this.lastMessageRepliedTo =
       this.state.messages[this.state.messages.length - 1]?.id;
-    // console.log("Chat onStart");
-    // void this.addMcpServer(
-    //   "cloudflare-agents",
-    //   "https://gitmcp.io/cloudflare/agents",
-    //   "http://localhost:5173"
-    // )
-    //   .then(() => {
-    //     console.log("mcpServer added");
-    //   })
-    //   .catch((error) => {
-    //     console.error("mcpServer addition failed", error);
-    //   });
   }
 
   @callable({
@@ -134,10 +122,6 @@ export class Codemode extends Agent<Env, State> {
   }
 
   async onChatMessage() {
-    // const mcpConnection = await this.mcp.connect(
-    //   "https://path-to-mcp-server/sse"
-    // );
-
     // Collect all tools, including MCP tools
     this.setState({ messages: this.state.messages, loading: true });
     const allTools = {
@@ -165,48 +149,6 @@ If the user asks to schedule a task, use the schedule tool to schedule the task.
         }
       })
     });
-
-    // const stream = createUIMessageStream({
-    //   onError: (error) => {
-    //     console.error("error", error);
-    //     return `Error: ${error}`;
-    //   },
-    //   execute: async ({ writer }) => {
-    //     // Clean up incomplete tool calls to prevent API errors
-    //     // const cleanedMessages = cleanupMessages(this.messages);
-
-    //     // // Process any pending tool calls from previous messages
-    //     // // This handles human-in-the-loop confirmations for tools
-    //     // const processedMessages = await processToolCalls({
-    //     //   messages: cleanedMessages,
-    //     //   dataStream: writer,
-    //     //   tools: wrappedTools,
-    //     //   executions
-    //     // });
-
-    //     const result = streamText({
-    //       system: prompt,
-
-    //       messages: convertToModelMessages(this.state.messages),
-    //       model,
-    //       // tools: allTools,
-    //       tools: wrappedTools,
-
-    //       onError: (error) => {
-    //         console.error("error", error);
-    //       },
-    //       onChunk: (chunk) => {
-    //         console.log("chunk", chunk);
-    //       },
-
-    //       stopWhen: stepCountIs(10)
-    //     });
-
-    //     writer.merge(result.toUIMessageStream());
-    //   }
-    // });
-
-    // return createUIMessageStreamResponse({ stream });
 
     const result = streamText({
       system: prompt,
